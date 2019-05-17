@@ -1,9 +1,7 @@
 # deepHaem
 Implementation of a deep convolutional neuronal network for predicting chromatin features from DNA sequence.
 
-This repository contains a flexible Tensorflow implementation of a convolutional neuronal network. The basic architectures is built on the principles described in DeepSEA (http://deepsea.princeton.edu/help/) and Basset (https://github.com/davek44/Basset).
-
-The general architecture is multiple layers of convolutional filters followed by ReLU and max pooling and a fully connected layer in the end. An additional pre-final fully connected layer can be switch on as well. The number of convolutional layers is flexible and selected as hyperparameter in the beginning of the training procedure. Batch normalization is optional.
+The repository contains a flexible tensorflow implementation of a convolutional neuronal network with max pooling. The basic architecture is built on the principles described in DeepSEA (http://deepsea.princeton.edu/help/) and Basset (https://github.com/davek44/Basset). It is comprised of multiple layers of convolutional filters followed by ReLU and max pooling and a fully connected layer in the end. An additional pre-final fully connected layer can be switch on as well. The number of convolutional layers is flexible and selected as hyperparameter in the beginning of the training procedure. Batch normalization is optional.
 
 
 ### Contents
@@ -15,11 +13,6 @@ The general architecture is multiple layers of convolutional filters followed by
 * **run_save_weigths.py** : Helper script to store the learned filter weigths in a numpy array
 * run_test_accuracy.py** : Test prediction accuracy on test, validaiotn or novel data set. Allows to extract only the predictions of selected chromatin classes. Make plots and optional save labels and predicitons for visualizing in a different programme.
 * **run_training_deephaemwindow.py** : train a deepHaem model  using the hyperparameters (architecture specifications and learning process parameters) provided.
-
-
-### How to run
-
-
 
 ### Requirements
 
