@@ -27,3 +27,6 @@ The basic data format is DNA sequences each assoicated with a set of chromatin f
 The training (and test and validation data) used in the DeepSEA publication are the best starting point. They are similarly formated to the format required for running deepHaem (http://deepsea.princeton.edu/help/). Basset has another publcily available set comprising over 600 open chromatin assays across cell types (https://github.com/davek44/Basset). The input is 600 bp per site and the data pre-processing is peak based rather then windowed bin based (DeepSEA).
 
 For how to create your own data set, refer to the workflow used in DeepSEA or Basset. We will add pointer to processing your own data in the future. Once you have a bed like file listing chromosome start, chromatin feature classes and the sequence (see example: ./data_preprocessing/example_training_set_format_for_processing.txt) you can use https://github.com/rschwess/RonsUtilityBox/blob/master/machine_learning_related/make_training_data.py to split the data into training, test and validation set and store it as numpy arrays in hdf5 format.
+
+### Models
+**./models** contains links to already trained models.
