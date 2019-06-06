@@ -19,6 +19,7 @@ The repository contains a flexible tensorflow implementation of a convolutional 
 * Python 3.5 +
 * Tensorflow v1.8.0 +
 * Pre-processed chromatin feature data
+* Utitlity scripts require bedtools to be installed
 
 ### Data
 
