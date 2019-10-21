@@ -1,4 +1,9 @@
-"""Run Inspect First Layer Weights of dilation/residual/DHS"""
+"""
+Save filter weights of a deepHaem model.
+Designed to run interacively (e.g. ipython)
+Adjust paths to model and graph and select and output file location.
+Alternativly use FLAGS to supply arguments and comment out the explicit declaration.
+"""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -26,16 +31,18 @@ import tensorflow as tf
 
 
 # for running interactive
-exec(open("/home/ron/fusessh/scripts/machine_learning/epigenome_nets/deepHaem/deepHaemWindow.py").read())
-in_model = '/home/ron/fusessh/machine_learning/deepHaem/training_runs_archive/runs_dhw_mouse_enc/training_dhw_mouse_enc_deepC_parameters_as_human_15052019/best_checkpoint-217584'
-in_graph = '/home/ron/fusessh/machine_learning/deepHaem/training_runs_archive/runs_dhw_mouse_enc/training_dhw_mouse_enc_deepC_parameters_as_human_15052019/best_checkpoint-217584.meta'
+exec(open("/path/to/deepHaem/deepHaemWindow.py").read())
 
-outfile = '/home/ron/fusessh/machine_learning/deepHaem/training_runs_archive/runs_dhw_mouse_enc/training_dhw_mouse_enc_deepC_parameters_as_human_15052019/saved_conv_weights_mouse_deepc_arch.npy'
-# outfile2 = '/home/ron/fusessh/machine_learning/deepHaem/training_runs_archive/training_dhw_mouse_enc_24102018/saved_conv_weights_mouse_enc_first_layer.npy'
+#
+in_model = './model'
+in_graph = './model.meta'
+
+outfile = './saved_conv_weights.npy'
+
 
 # GLOBAL Options ---------------------------------------------------------------
 BP_CONTEXT = 1000
-NUM_CLASSES = 1022
+NUM_CLASSES = 936
 
 # LOAD MODEL -------------------------------------------------------------------
 # with tf.Session() as sess:
@@ -71,6 +78,8 @@ np.savez(outfile,
     weights_hidden4, biases_hidden4,
     weights_hidden5, biases_hidden5)
 
+
+# Check
 npzfile = np.load(outfile + ".npz")
 npzfile.files
 
@@ -78,15 +87,3 @@ type(npzfile['arr_0'])
 
 a = npzfile['arr_0']
 a.shape
-
-# np.save(outfile2, weights_hidden1)
-
-# print as txt
-# print('Fetching and saving Kernel/Filter Weights ...')
-# for w in range(weights_shape[2]):
-#     # get and save weights
-#     # weights_shaped = weights[:,:,w].reshape(FLAGS.kernel1_width,4)
-#     kernel = weights[:,:,w]
-#     np.savetxt(FLAGS.out_dir + '/weights_filter' + str(w) + '.txt', kernel, delimiter="\t")
-#
-# print('Done!')
