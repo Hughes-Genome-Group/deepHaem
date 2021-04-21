@@ -23,7 +23,7 @@ from scipy import interp
 # Basic model parameters as external flags -------------------------------------
 flags = tf.app.flags
 FLAGS = flags.FLAGS
-flags.DEFINE_string('dlmodel', 'endpoolDeepHaemElement', 'Specifcy the DL model file to use e.g. <endpoolDeepHaemElement>.py')
+flags.DEFINE_string('dlmodel', 'deepHaemWindow', 'Specifcy the DL model file to use e.g. <endpoolDeepHaemElement>.py')
 flags.DEFINE_string('test_on', 'test', 'Either \"test\" or \"valid\" -> select if to test accuracy on the test or validation set')
 flags.DEFINE_string('test_file', '', 'Input Training and Test Sequences and Labels in hdf5 Format.\
 "test_seqs", "test_labels" labeled data. Or the validation file labels validation_seqs etc. ...')
@@ -45,6 +45,9 @@ flags.DEFINE_integer('num_classes', 919, 'Number of classes.')
 # machine options
 flags.DEFINE_string('run_on', 'gpu', 'Select where to run on (cpu or gpu)')
 flags.DEFINE_integer('gpu', 0, 'Select a single available GPU and mask the rest. Default 0.')
+# add option to print prc/roc aucs
+flags.DEFINE_string('roc_auc', 'False', 'Define if to print ROC AUC values (False/True)')
+flags.DEFINE_string('prc_auc', 'False', 'Define if to print PRC AUC values (False/True)')
 
 # some arg parsing and execution
 # import flexible dl model arch
@@ -213,36 +216,47 @@ with tf.Session(config = config) as sess:
         class_range_to_iter = range(test_scores.shape[1])
         for i in class_range_to_iter:
             precision[i], recall[i], _ = precision_recall_curve(test_labels[test_range, i], test_scores[test_range, i])
-            pr_auc[i] = auc(recall[i], precision[i], reorder=True)
+            pr_auc[i] = auc(recall[i], precision[i])
+
+        # Print ROC AUC values if specified --------------------------------------
+        if FLAGS.roc_auc == 'True':
+            fprc = open(FLAGS.test_dir + '/test_prc_aucs_' + FLAGS.name_tag + '_save.txt', "w")
+            fprc.write("ID\tPRC_AUC\n")
+            for i in class_range_to_iter:
+                j = i + slize_scheme[0]
+                fprc.write('%s\t%s\n' % (j, pr_auc[i]))
+            fprc.close()
 
         # MICRO averaging ----------------------------------------------------------
         if FLAGS.slize == 'all':
             precision["micro"], recall["micro"], _ = precision_recall_curve(test_labels[test_range].ravel(), test_scores[test_range].ravel())
         else:
             # specifc micro avg for slized columns
-            precision["micro"], recall["micro"], _ = precision_recall_curve(test_labels[test_range, slize_scheme[0]:slize_scheme[1]].ravel(), test_scores[test_range, slize_scheme[0]:slize_scheme[1]].ravel())
+            #precision["micro"], recall["micro"], _ = precision_recall_curve(test_labels[test_range, slize_scheme[0]:slize_scheme[1]].ravel(), test_scores[test_range, slize_scheme[0]:slize_scheme[1]].ravel())
+            precision["micro"], recall["micro"], _ = precision_recall_curve(test_labels[test_range,:].ravel(), test_scores[test_range,:].ravel())  # test labels and scores  arealready sliced
 
-        pr_auc["micro"] = auc(recall["micro"], precision["micro"], reorder=True)
+        pr_auc["micro"] = auc(recall["micro"], precision["micro"])
 
-        # MACRO averaging ----------------------------------------------------------
-        # aggregate all false positive rates
-        all_precision = np.unique(np.concatenate([precision[i] for i in class_range_to_iter]))
-        # Then interpolate all ROC curves at this points
-        mean_recall = np.zeros_like(all_precision)
-        for i in class_range_to_iter:
-            mean_recall += interp(all_precision, precision[i], recall[i])
-        # Finally average it and compute AUC
-        if FLAGS.slize == 'all':
-            mean_recall /= test_scores.shape[1]
-        else:
-            mean_recall /= slize_scheme[1] - slize_scheme[0] + 1
-
-        precision["macro"] = all_precision
-        recall["macro"] = mean_recall
-        pr_auc["macro"] = auc(recall["macro"], precision["macro"], reorder=True)
+#        # MACRO averaging ----------------------------------------------------------
+#        # aggregate all false positive rates
+#        all_precision = np.unique(np.concatenate([precision[i] for i in class_range_to_iter]))
+#        # Then interpolate all ROC curves at this points
+#        mean_recall = np.zeros_like(all_precision)
+#        for i in class_range_to_iter:
+#            mean_recall += interp(all_precision, precision[i], recall[i])
+#        # Finally average it and compute AUC
+#        if FLAGS.slize == 'all':
+#            mean_recall /= test_scores.shape[1]
+#        else:
+#            mean_recall /= slize_scheme[1] - slize_scheme[0] + 1
+#
+#        precision["macro"] = all_precision
+#        recall["macro"] = mean_recall
+#        pr_auc["macro"] = auc(recall["macro"], precision["macro"])
 
         # Print Results ------------------------------------------------------------
-        print('PR AUC - Micro Avg. %s  Macro Avg. %s' % (pr_auc['micro'], pr_auc['macro']))
+#        print('PR AUC - Micro Avg. %s  Macro Avg. %s' % (pr_auc['micro'], pr_auc['macro']))
+        print('PR AUC - Micro Avg. %s' % (pr_auc['micro']))
 
         # Plot ---------------------------------------------------------------------
         plt.figure()
@@ -252,10 +266,10 @@ with tf.Session(config = config) as sess:
                  label='micro-average PR curve (area = {0:0.2f})'
                        ''.format(pr_auc["micro"]),
                  color='orange', linewidth=2)
-        plt.plot(recall["macro"], precision["macro"],
-            label='macro-average PR curve (area = {0:0.2f})'
-                ''.format(pr_auc["macro"]),
-            color='blue', linewidth=2)
+#        plt.plot(recall["macro"], precision["macro"],
+#            label='macro-average PR curve (area = {0:0.2f})'
+#                ''.format(pr_auc["macro"]),
+#            color='blue', linewidth=2)
         plt.plot([0, 1], [0, 1], 'k--', lw=2)
         plt.xlim([0.0, 1.0])
         plt.ylim([0.0, 1.05])
@@ -287,13 +301,22 @@ with tf.Session(config = config) as sess:
             fpr[i], tpr[i], _ = roc_curve(test_labels[test_range, i], test_scores[test_range, i])
             roc_auc[i] = auc(fpr[i], tpr[i])
 
+        # Print ROC AUC values if specified --------------------------------------
+        if FLAGS.roc_auc == 'True':
+            froc = open(FLAGS.test_dir + '/test_roc_aucs_' + FLAGS.name_tag + '_save.txt', "w")   
+            froc.write("ID\tROC_AUC\n")
+            for i in class_range_to_iter:
+                j = i + slize_scheme[0]
+                froc.write('%s\t%s\n' % (j, roc_auc[i]))
+            froc.close()
+
         # MICRO averaging ----------------------------------------------------------
         if FLAGS.slize == 'all':
             fpr["micro"], tpr["micro"], _ = roc_curve(test_labels[test_range].ravel(), test_scores[test_range].ravel())
         else:
             # specifc micro avg for slized columns
-            fpr["micro"], tpr["micro"], _ = roc_curve(test_labels[test_range, slize_scheme[0]:slize_scheme[1]].ravel(), test_scores[test_range, slize_scheme[0]:slize_scheme[1]].ravel())
-
+            #fpr["micro"], tpr["micro"], _ = roc_curve(test_labels[test_range, slize_scheme[0]:slize_scheme[1]].ravel(), test_scores[test_range, slize_scheme[0]:slize_scheme[1]].ravel())
+            fpr["micro"], tpr["micro"], _ = roc_curve(test_labels[test_range, :].ravel(), test_scores[test_range, :].ravel())  # test labels and scores are already sliced
         roc_auc["micro"] = auc(fpr["micro"], tpr["micro"])
 
         # MACRO averaging ----------------------------------------------------------
