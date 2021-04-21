@@ -193,7 +193,7 @@ with tf.Session(config = config) as sess:
         np.savetxt(FLAGS.test_dir + '/test_scores_' + FLAGS.name_tag + '_save.txt',test_scores, fmt='%1.5f', delimiter='\t')
         np.savetxt(FLAGS.test_dir + '/test_labels_' + FLAGS.name_tag + '_save.txt', test_labels, fmt='%1i', delimiter='\t')
 
-    # Calc and Plot ROC Curves -------------------------------------------------
+    # Calc and Plot PRC Curves -------------------------------------------------
     if FLAGS.prc == 'True':
         import matplotlib.pyplot as plt
         print('Calculating PR curves ...')
@@ -209,7 +209,7 @@ with tf.Session(config = config) as sess:
         # convert
         test_labels = test_labels.astype(int)
 
-        # Compute ROC curve and ROC area for each class ----------------------------
+        # Compute PRC curve and ROC area for each class ----------------------------
         precision = dict()
         recall = dict()
         pr_auc = dict()
@@ -218,12 +218,15 @@ with tf.Session(config = config) as sess:
             precision[i], recall[i], _ = precision_recall_curve(test_labels[test_range, i], test_scores[test_range, i])
             pr_auc[i] = auc(recall[i], precision[i])
 
-        # Print ROC AUC values if specified --------------------------------------
+        # Print PRC AUC values if specified --------------------------------------
         if FLAGS.roc_auc == 'True':
             fprc = open(FLAGS.test_dir + '/test_prc_aucs_' + FLAGS.name_tag + '_save.txt', "w")
             fprc.write("ID\tPRC_AUC\n")
             for i in class_range_to_iter:
-                j = i + slize_scheme[0]
+                if slize != 'all':
+                    j = i + slize_scheme[0]
+                else:
+                    j = i
                 fprc.write('%s\t%s\n' % (j, pr_auc[i]))
             fprc.close()
 
@@ -306,7 +309,10 @@ with tf.Session(config = config) as sess:
             froc = open(FLAGS.test_dir + '/test_roc_aucs_' + FLAGS.name_tag + '_save.txt', "w")   
             froc.write("ID\tROC_AUC\n")
             for i in class_range_to_iter:
-                j = i + slize_scheme[0]
+                if slize != 'all':
+                    j = i + slize_scheme[0]
+                else:
+                    j  = i
                 froc.write('%s\t%s\n' % (j, roc_auc[i]))
             froc.close()
 
