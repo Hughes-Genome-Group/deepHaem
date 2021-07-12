@@ -223,7 +223,7 @@ with tf.Session(config = config) as sess:
             fprc = open(FLAGS.test_dir + '/test_prc_aucs_' + FLAGS.name_tag + '_save.txt', "w")
             fprc.write("ID\tPRC_AUC\n")
             for i in class_range_to_iter:
-                if slize != 'all':
+                if FLAGS.slize != 'all':
                     j = i + slize_scheme[0]
                 else:
                     j = i
@@ -309,7 +309,7 @@ with tf.Session(config = config) as sess:
             froc = open(FLAGS.test_dir + '/test_roc_aucs_' + FLAGS.name_tag + '_save.txt', "w")   
             froc.write("ID\tROC_AUC\n")
             for i in class_range_to_iter:
-                if slize != 'all':
+                if FLAGS.slize != 'all':
                     j = i + slize_scheme[0]
                 else:
                     j  = i

@@ -442,7 +442,7 @@ with tf.Session(config = config) as sess:
                             # damage
                             tmp_damage = tmp_ref_score - tmp_var_score
                             # relative lof fold change of odds
-                            tmp_log_odds_damage = abs(log(tmp_ref_score/(1-tmp_ref_score + 1e-5)) - log(tmp_var_score/(1-tmp_var_score + 1e-5)))
+                            tmp_log_odds_damage = abs(log(tmp_ref_score/(1-tmp_ref_score)) - log(tmp_var_score/(1-tmp_var_score)))
                             damage_list.append(tmp_damage)
                             log_odds_list.append(tmp_log_odds_damage)
 
