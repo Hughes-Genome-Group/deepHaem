@@ -41,7 +41,8 @@ import sys
 import re
 import h5py
 import numpy as np
-import tensorflow as tf
+# import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from math import log
 from itertools import islice, cycle
 import pybedtools
@@ -60,6 +61,7 @@ flags.DEFINE_string('name_tag', 'pred', 'Nametag to add to filenames')
 # WHAT TO DO
 flags.DEFINE_string('do', 'class', 'Select what to do default: predict the \'class\' of a sequence or \'damage\' per class; \'damage_and_scores\' will report the damages as well as the raw scores for reference and variant')
 flags.DEFINE_string('slize', 'all', 'Comma separated list of start and end position of columns to slice out (0) indexed. Will use all if unspecified.')
+flags.DEFINE_integer('rounddecimals', 10, 'Select the number of decimal places to round prob scores and damages to. [Default 10]')
 # EXTERNAL files
 flags.DEFINE_string('input', '', 'Must be a BED like file for \"--do class\" and a vcf like file for \"--do damage\"')
 flags.DEFINE_string('model', './model', 'Checkpoint of model file to be tested. (Full path to model without suffix!)')
@@ -83,7 +85,7 @@ if FLAGS.slize != 'all':
     slize_scheme = list(map(int, slize_scheme))
 
 # GLOBAL OPTIONS ---------------------------------------------------------------
-max_indel_size = 0
+max_indel_size = 50
 
 # TODO get INDELS and SNPs to work simulataneously
 
@@ -96,6 +98,7 @@ def get_hot_coded_seq(sequence):
     """Convert a 4 base letter sequence to 4-row x-cols hot coded sequence"""
     # initialise empty
     hotsequence = np.zeros((len(sequence),4))
+    sequence = sequence.upper()
     # set hot code 1 according to gathered sequence
     for i in range(len(sequence)):
         if sequence[i] == 'A':
@@ -282,11 +285,16 @@ elif FLAGS.do in ['damage', 'damage_and_scores']:
     out_file = FLAGS.out_dir + '/total_damage_scores_' + FLAGS.name_tag + '.bed'
     out_file2 = FLAGS.out_dir + '/logfold_damage_scores_' + FLAGS.name_tag + '.bed'
 else:
-    print('Please Select \"class\" of \"damage\" as value for \"--do\" ... exiting ...')
+    print('Please Select \"class\" of \"damage\" or \"damage_and_scores\" as value for \"--do\" ... exiting ...')
+    sys.exit()
+
+# check if batch size 1 selected (need to fix that)
+if FLAGS.batch_size <= 1:
+    print("Please select a batch size greater then 1!")
     sys.exit()
 
 if FLAGS.do == 'damage_and_scores':
-    out_file3 = FLAGS.out_dir + '/referece_class_scores_' + FLAGS.name_tag + '.bed'
+    out_file3 = FLAGS.out_dir + '/reference_class_scores_' + FLAGS.name_tag + '.bed'
     out_file4 = FLAGS.out_dir + '/variant_class_scores_' + FLAGS.name_tag + '.bed'
 
 # Set Genome -------------------------------------------------------------------
@@ -304,6 +312,7 @@ with tf.Session(config = config) as sess:
     # load meta graph and restore weights
     saver = tf.train.import_meta_graph(FLAGS.model + '.meta')
     saver.restore(sess, FLAGS.model)
+
     # get placeholders and ops ------------------------------------------------
     graph = tf.get_default_graph()
     seqs_placeholder = graph.get_tensor_by_name("seqs:0")
@@ -392,6 +401,7 @@ with tf.Session(config = config) as sess:
                             # chop both sites equally
                             chunk_seqs[s] = chunk_seqs[s][tmp_start:tmp_end]
 
+
                 # make hot encoded numpy array ---------------------------------
                 chunk_hotseqs = []
                 for seq in chunk_seqs:
@@ -409,9 +419,13 @@ with tf.Session(config = config) as sess:
                     chunk_hotseqs,
                     keep_prob_inner_placeholder,
                     keep_prob_outer_placeholder)
+
+                # round
+                chunk_predictions = np.round(chunk_predictions, decimals = FLAGS.rounddecimals)
+
                 # Slice relevant class predicitons if specified
                 if FLAGS.slize != 'all':
-                    chunk_predictions = chunk_predictions[:, slize_scheme]
+                    chunk_predictions = chunk_predictions[:,slize_scheme]
 
                 # Aggregate and Print Bed Regions with predicitons -------------
                 if FLAGS.do == 'class':
@@ -441,8 +455,22 @@ with tf.Session(config = config) as sess:
 
                             # damage
                             tmp_damage = tmp_ref_score - tmp_var_score
-                            # relative lof fold change of odds
-                            tmp_log_odds_damage = abs(log(tmp_ref_score/(1-tmp_ref_score)) - log(tmp_var_score/(1-tmp_var_score)))
+                            # relative log fold change of odds with pseudo count
+                            # catch log of negative cases
+                            if tmp_ref_score/(1 - tmp_ref_score) <= 0:
+                                tmp_log_odds_damage = np.nan
+                            elif tmp_var_score/(1 - tmp_var_score) <= 0:
+                                tmp_log_odds_damage = np.nan
+                            elif (1 - tmp_var_score) == 0:
+                                tmp_log_odds_damage = np.nan
+                            elif (1 - tmp_ref_score) == 0:
+                                tmp_log_odds_damage = np.nan
+                            else:
+                                try:
+                                    tmp_log_odds_damage = abs(log(tmp_ref_score/(1 - tmp_ref_score)) - log(tmp_var_score/(1 - tmp_var_score)))
+                                except ValueError:
+                                    print('Attempting to calculate invalid log score for %s' % t)
+                                    tmp_log_odds_damage = np.nan
                             damage_list.append(tmp_damage)
                             log_odds_list.append(tmp_log_odds_damage)
 
@@ -488,6 +516,10 @@ with tf.Session(config = config) as sess:
                 # Report Progress
                 done_count += 1
                 print('Processed lines: %s' % (chunk_size * done_count))
+
+                # clean temp bed files every 100 steps
+                if done_count % 100 == 0:
+                    pybedtools.helpers.cleanup()
 
 print("Finished ...")
 
