@@ -36,10 +36,11 @@ The bash script [format_peaks_to_training_data.sh](./format_peaks_to_training_da
 formatting process, deepSEA style, using the example peaks. For processing your own data adapt the directories and
 potentially the columns extracted if using different peak formats.
 
-The primary output is a plain text file training_instances_dataset.txt contains all genomic windows with at least one chromatin feature overlap.
-The file is tab separated in the format (chr start end chromatin_feature_ids, DNA_sequence).
-The chromatin features associated are listed as 0-based indexes in a single comma separated column.
+The primary output is a plain text file training_instances_dataset.txt contains all genomic windows with at least one chromatin feature overlap. The file is tab separated in the format (chr start end chromatin_feature_ids, DNA_sequence). The chromatin features associated are listed as 0-based indexes in a single comma separated column.
 The secondary output file labels_dataset.txt links labels to chromatin features.
+
+[./example_data_processing/](./example_data_processing/) contains examples of how these files should look after running the formatting (only first 5 lies for instances file).  
+[./example_data/example_training_set_format_for_processing.txt](./example_data/example_training_set_format_for_processing.txt) gives an example of how the first lines of that file would look like for a bigger dataset.
 
 #### 3) Split up training dataset and store in hdf5 files
 
@@ -52,7 +53,7 @@ Every sequence is stored as sequence_length x 4 with hot encoding for the DNA ba
 Labels are stored as on hot encoded labels yielding a vector of [instances x number_of_classes]
 
 Example how to run the training set creation in hold out chromosome mode:
-Note "store_bool" set to True will store sequence representation ()
+Note "store_bool" set to True will store sequence representation and labels as boolean values to save storage.
 ```
 python ./make_training_data_bool_avail.py --seed 1234 \
   --split_mode chr \
