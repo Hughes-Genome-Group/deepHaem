@@ -95,12 +95,10 @@ for i in range(num_ids):
 
 # test print some bin_look_up_lines
 print("Test Print first bin_look_up lines:")
-print(bin_look_up[0][0:6])
-print(bin_look_up[1][0:6])
-print(bin_look_up[2][0:6])
-print(bin_look_up[3][0:6])
-print(bin_look_up[4][0:6])
-print(bin_look_up[5][0:6])
+print(bin_look_up[0][0:4])
+print(bin_look_up[1][0:4])
+print(bin_look_up[2][0:4])
+print(bin_look_up[3][0:4])
 
 # Read in data -----------------------------------------------------------------
 # init single empty binary label array for access later

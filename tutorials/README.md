@@ -2,11 +2,12 @@
 
 ### Requirements
 
-The following software and packages are required for data preprocessing
 * bedtools
 * python 3.5+ with the following packages available
   * numpy
   * h5py
+  * pysam (used to extract reference DNA sequence, can be achieved by samtools or similar)
+* command line perl calls can be replaced by awk or similar
 
 Core input is a collection of peak call of chromatin data (e.g DNase-seq, ATAC-seq, ChIP-seq).
 For demonstration we provide a set of subsampled open chromatin peaks from ENCODE under [./example_data/example_peaks](./exmaple_data/example_peaks). These contain a random sample of 10,000 peaks.
@@ -35,29 +36,45 @@ The bash script [format_peaks_to_training_data.sh](./format_peaks_to_training_da
 formatting process, deepSEA style, using the example peaks. For processing your own data adapt the directories and
 potentially the columns extracted if using different peak formats.
 
-The primar output is a plain text file ... contains all genomic windows with at least one chromatin feature overlap.
+The primary output is a plain text file training_instances_dataset.txt contains all genomic windows with at least one chromatin feature overlap.
 The file is tab separated in the format (chr start end chromatin_feature_ids, DNA_sequence).
 The chromatin features associated are listed as 0-based indexes in a single comma separated column.
-The secondary output file labels... links labels to chromatin features.
+The secondary output file labels_dataset.txt links labels to chromatin features.
 
 #### 3) Split up training dataset and store in hdf5 files
 
-The python script [make_training_data_bool_avail.py](./make_training_data_bool_avail) uses as input the plain text dataset from step 2), splits up training, test and validation set and stores them in hdf5 format for the deepHaem scripts. Each line in the plain text dataset constitutes an instance. Note that we used the convention where test data are evaluated after every training epoch and validation data are hold out during the training and evaluation process and kept for validating the final models. Two split-modes can be specified either sampling the test and validation instances given specified fractions or by holding out entire specified chromosomes for the test and validation set. Practically, we observed models that generalise better when using hold out chromosomes.
+The python script [make_training_data_bool_avail.py](./make_training_data_bool_avail.py) uses as input the plain text dataset from step 2), splits up training, test and validation set and stores them in hdf5 format for the deepHaem scripts. Each line in the plain text dataset constitutes an instance. Note that we used the convention where test data are evaluated after every training epoch and validation data are hold out during the training and evaluation process and kept for validating the final models. Two split-modes can be specified either sampling the test and validation instances given specified fractions or by holding out entire specified chromosomes for the test and validation set. Practically, we observed models that generalise better when using hold out chromosomes.
 
 Output are 2x .h5 files and 3x coordinate files. The coordinate files detail which genomic windows are used in which set.
 The h5 files store the chromatin feature labels and DNA sequences. The training_set h5 file contains the training and test data. The validation_set h5 file holds the validation data.
 
+Every sequence is stored as sequence_length x 4 with hot encoding for the DNA bases yielding a tensor of [instances x sequence_length x 4].
+Labels are stored as on hot encoded labels yielding a vector of [instances x number_of_classes]
 
 Example how to run the training set creation in hold out chromosome mode:
-
+Note "store_bool" set to True will store sequence representation ()
 ```
-test.py
+python ./make_training_data_bool_avail.py --seed 1234 \
+  --split_mode chr \
+  --chr_test chr11 chr12 \
+  --chr_valid chr15 chr16 chr17 \
+  --save_prefix ./example_data_processing/deepHaem_bool_chr1112151617_holdout \
+  --num_classes 5 \
+  --store_bool 'True' \
+  ./example_data_processing/training.instances.dataset.txt
 ```
 
 Example how to run the training set creation when sampling test and validation set:
 
 ```
-test.py
+python ./make_training_data_bool_avail.py --seed 1234 \
+  --split_mode random \
+  --frac_test 0.2 \
+  --frac_valid 0.2 \
+  --save_prefix ./example_data_processing/deepHaem_bool_sample_split_holdout \
+  --num_classes 5 \
+  --store_bool 'True' \
+  ./example_data_processing/training.instances.dataset.txt
 ```
 
 

@@ -2,7 +2,7 @@
 
 # This example script runs through the process of urning a set of chromatin feature
 # peaks into a training set for deepHaem.
-# It requires an installation of bedtools to be available to call
+# It requires an installation of bedtools and perl to be available to call
 # and a set of chromatin feature peaks
 # For demonstration this script uses an example of 5 ENCODE DNase-seq peak calls
 # subsampled to 10,000 peaks each. For creating effective training datasets we
@@ -11,81 +11,75 @@
 # Set up =======================================================================
 
 # specify current working directory
-OUTDIR='.'
+OUTDIR='./example_data_processing'
 
 # chrom sizes file hg19 example provided
 # retrieve for example from UCSC table browser
-CHROM_SIZES_FILE='./example_data/hg19_chrom_sizes.txt'
+CHROM_SIZES_FILE='../example_data/hg19_chrom_sizes.txt'
+
+# whole genome fasta file with index (not provided as example file)
+# requires whole genome fasta file and fasta index present in same diretory
+WHOLE_GENOME_FASTA='/Users/ron/data_local/extra_tutorial_data/hg19.fa'
+
+# python script to extract DNA sequence of interest
+# uses pysam and requires pysam module available
+PYTHON_SEQ_HELPER='../get_genome_seq_helper.py'
 
 cd ${OUTDIR}
 
 # 1) make 200 bp windoes (genomic bins) across the whoke genome ================
-bedtools makewindows -g /t1-data/user/hugheslab/rschwess/database/chrom_sizes/hg19_chrom_sizes.txt -w 200 -s 200 >binned_genome_hg19_200bp_200incr.bed
+bedtools makewindows -g ${CHROM_SIZES_FILE} -w 200 -s 200 >binned_genome_hg19_200bp_200incr.bed
 
-## 2) Intersect single files with bins
-#mkdir -p reintersects
+# 2) Intersect single peak call files with genomic bins  =======================
+mkdir -p reintersects
+# intersect each file with genomic windows yielding a column indicating no overlap = 0 or overlap = 1
+# extracing only that column for every peak call file
+find ../example_data/example_peaks/  -name "*bed" | xargs -P 2 -I % sh -c 'file=%; echo $file; name=`basename ${file} .bed`; echo $name; bedtools intersect -f 0.5 -c -a binned_genome_hg19_200bp_200incr.bed -b ${file} | cut -f 4 >./reintersects/${name}_reintersect.bed'
 
-#find ../bed_links/heart_beds/  -name "*bed" | xargs -P 4 -I % sh -c 'name=`basename % .bed`; echo $name; bedtools intersect -f 0.5 -c -a binned_genome_hg19_200bp_200incr.bed -b % | cut -f 4 >./reintersects_heart/${name}_reintersect.bed'
+# 3) paste together genomic coordinates and peak call intersections ============
+# create header line
+echo -ne "chr\tstart\tend" >binned_genome_reoverlaps_count.bed
+for i in `ls ./reintersects | grep reintersect | perl -lane '$_=~s/_reintersect.bed//g; print $_;'`;
+do
+  echo -ne "\t$i" >>binned_genome_reoverlaps_count.bed
+done
+echo -e "\n" >>binned_genome_reoverlaps_count.bed
 
+# paste together single itnersect columns
+paste `find ./reintersects/ -name '*bed'` >paste_temp
 
-# paste together
-echo  -ne "chr\tstart\tend" >binned_genome_heart_reoverlaps_count.bed
-for i in `ls ./reintersects_heart | grep reintersect | perl -ne '$_=~s/_reintersect.bed//g; print $_;'`; do echo -ne "\t$i" >>binned_genome_heart_reoverlaps_count.bed; done
-echo -ne "\n" >>binned_genome_heart_reoverlaps_count.bed
+# paste together coordinates and intersect columns
+paste binned_genome_hg19_200bp_200incr.bed paste_temp >>binned_genome_reoverlaps_count.bed
 
+# 4) Filter genomic windows ====================================================
+# filter out all zero entries, genomic windows with no intersecting chromatin feature peaks
+cat binned_genome_reoverlaps_count.bed | perl -lane '@c = @F; splice @c, 0, 3; $co = join(",", @c); print $_ if $co=~/[^0,]+/;' >binned_genome_chrom_zero_fil.bed
 
-paste `find ./reintersects_heart/ -name '*bed'` >paste_heart_temp1
+# OPTIONAL: remove sex chromosomes chrX and chrY
+cat binned_genome_chrom_zero_fil.bed | grep -v chrX | grep -v chrY | grep -v chrM >binned_genome_chrom_zero_fil_chr_fil.bed
 
-paste binned_genome_hg19_200bp_200incr.bed paste_heart_temp1 >>binned_genome_heart_reoverlaps_count.bed
+# 5) Extend windows to 1000 bp where possible and collapse labels to comma separated column
+tail -n +2 binned_genome_chrom_zero_fil_chr_fil.bed | perl -lane '$F[1]-=400; $F[1] = 0 if $F[1] < 0; $F[2]+=400; print "$F[0]\t$F[1]\t$F[2]\t".join(",", @F[3 .. $#F]);' >binned_genome_chrom_zero_fil_chr_fil_extend_collapse.bed
 
-
-# prepare labels files
-#head -n 1 binned_genome_full_reoverlaps_count.bed | perl -lane 'print join("\n", @F);' | perl -lane '$_=~s/wgEncodeAwg//g; $_=~s/\.narrowPeak.gz//g; print $_;' | tail -n +4 | cat -n >labels_extra30_full.txt
-head -n 1 binned_genome_heart_reoverlaps_count.bed | perl -lane 'print join("\n", @F);' | perl -lane '$_=~s/wgEncodeAwg//g; $_=~s/\.narrowPeak.gz//g; print $_;' | tail -n +4 | cat -n >labels_heart.txt
-
-# FILTER ==================================================================================
-# remove chrX and chrY
-cat binned_genome_heart_reoverlaps_count.bed | grep -v chrX | grep -v chrY | grep -v chrM >binned_genome_heart_reoverlaps_count_chrfiltered.bed
-
-# filter out all zero entries
-cat binned_genome_heart_reoverlaps_count_chrfiltered.bed | perl -lane '@c = @F; splice @c, 0, 3; $co = join(",", @c); print $_ if $co=~/[^0,]+/;' >binned_genome_heart_chrom_zero_fil.bed
-
-# extend windows to 1000 bp where possible, collapse classes to commas, extract sequence
-tail -n +2 binned_genome_heart_chrom_zero_fil.bed | perl -lane '$F[1]-=400; $F[1] = 0 if $F[1] < 0; $F[2]+=400; print join("\t", @F);' | perl /t1-data/user/hugheslab/rschwess/scripts/utility/machine_learning_related/make_coord_label_seq_from_coord_countmatrix.pl hg19 - training.data.heart.txt
-
-
-# -------------
-
-# EXTRA FILTER STEP: Get onyl bins intersecting with a "original TF" bin from DeepSEA or a WIMM data set.
-# prepare TF deepsea data
-# cat allTFs.pos.trimmed.bed | sort -k1,1 -k2,2n | bedtools merge -i - > allTFs.pos.trimmed.sorted.merged.bed
-# prepare all DNase and TF data from WIMM and ENCODE
-# Get a File from WIMM data and Deepsea TF AND DNase bed files for filtering
-# zcat `find /t1-data/user/hugheslab/rschwess/machine_learning/deepHaem/data/bed_links/deepsea_used/ -name '*Tfbs*'` `find /t1-data/user/hugheslab/rschwess/machine_learning/deepHaem/data/bed_links/deepsea_used/ -name '*Dnase*'` | cut -f 1,2,3 | sort -k1,1 -k2,2n | bedtools merge -d 10 -i - >union_deepsea_tf_and_dnase_combined_merged.bed
-# make a combined bed file for filtering
-# cat union_deepsea_tf_and_dnase_combined_merged.bed union_wimm_combined_elements.bed | sort -k1,1 -k2,2n | bedtools merge -i - >temp_for_post_binning_filtering_with_alldnase.bed
-# cat allTFs.pos.trimmed.bed union_wimm_combined_elements.bed | sort -k1,1 -k2,2n | bedtools merge -i - >temp_for_post_binning_filtering_with_deepseatf_wimmall.bed
-
-# filter
-# tail -n +2 binned_genome_full_reoverlaps_count_chrfiltered.bed | bedtools intersect -u -a - -b temp_for_post_binning_filtering_with_alldnase.bed >binned_genome_full_reoverlaps_count_selected.bed
-# tail -n +2 binned_genome_full_reoverlaps_count_chrfiltered.bed | bedtools intersect -u -a - -b temp_for_post_binning_filtering_with_deepseatf_wimmall.bed >binned_genome_full_tfandwimmonly_reoverlaps_count_selected.bed
-
-# filter out all zero entries
-#cat binned_genome_full_chrom_count_chrfiltered.bed | perl -lane '@c = @F; splice @c, 0, 3; $co = join(",", @c); print $_ if $co=~/[^0]+/;' >binned_genome_full_chrom_zero_fil.bed
-
-# extend windows to 1000 bp where possible, collapse classes to commas, extract sequence
-#cat binned_genome_full_chrom_zero_fil.bed | perl -lane '$F[1]-=400; $F[1] = 0 if $F[1] < 0; $F[2]+=400; print join("\t", @F);' | perl ../../../../scripts/utility/machine_learning_related/make_coord_label_seq_from_coord_countmatrix.pl hg19 - training.data.full.txt
-
-# cat binned_genome_full_tfandwimmonly_reoverlaps_count_selected.bed | perl -lane '$F[1]-=400; $F[1] = 0 if $F[1] < 0; $F[2]+=400; print join("\t", @F);' | perl ../../../../scripts/utility/machine_learning_related/make_coord_label_seq_from_coord_countmatrix.pl hg19 - training.data.full.tfandwimmonly.txt
-
-## Get Reverse complement of training data to feed
-#cat training.data.full.tfandwimmonly.txt | perl -lane '$F[4] = reverse $F[4]; $F[4]=~s/A/B/g; $F[4]=~s/T/A/g; $F[4]=~s/B/T/g; $F[4]=~s/C/D/g; $F[4]=~s/G/C/g; $F[4]=~s/D/G/g; print join("\t", @F);' >reverse_temp
-#cat training.data.full.tfandwimmonly.txt reverse_temp >training.data.full.tfandwimmonly.revcomp.txt
-#rm -f reverse_temp
+# 6) Extract reference DNA sequnce. This pthon helper script use pysam but any method to achieve this works
+python3 ${PYTHON_SEQ_HELPER} --input ./binned_genome_chrom_zero_fil_chr_fil_extend_collapse.bed --genome_file ${WHOLE_GENOME_FASTA} --output ./training_instances_dataset.txt
 
 
+# 7) Prepare labels files =======================================================
+head -n 1 binned_genome_reoverlaps_count.bed | perl -lane 'print join("\n", @F);' | tail -n +4 | cat -n | perl -lane '$F[0]--; print "$F[0]\t$F[1]";' >labels_dataset.txt
 
+# relevant outputs going forward are labels_dataset.txt & training_instances_dataset.txt
+# the labels file should have this format
+# 0       ENCFF021QCV_10k_sample
+# 1       ENCFF022BIA_10k_sample
+# 2       ENCFF037AJZ_10k_sample
+# 3       ENCFF042RGX_10k_sample
+# 4       ENCFF102CCA_10k_sample
 
-# handle that one with test chr7 and validation 8/9
-## make python hdf5 training data
-# qsub prepare_h5py_data.sh
+# the training instances file should have this format
+# chr1    633400  634400  1,0,0,0,0      TACT...
+# chr1    633600  634600  1,0,0,0,0      TAGA...
+# chr1    830800  831800  1,0,0,0,0       AGGA...
+
+# 8) CLEAN UP ==================================================================
+# rm -rf binned_* ./reintersects paste*
