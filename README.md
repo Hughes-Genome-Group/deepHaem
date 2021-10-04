@@ -16,18 +16,20 @@ The repository contains a flexible tensorflow implementation of a convolutional 
 
 ### Requirements
 
-* Python 3.5 +
-* Tensorflow v1.8.0 +
-* Pre-processed chromatin feature data
+* Python 3.5+ with the folowing packages installed
+  * Tensorflow v1.8.0+
+  * numpy
+  * h5py
 * Utitlity scripts require bedtools to be installed
+
+
+### Models
+[./models] contains links to trained models.
 
 ### Data
 
-The basic data format is DNA sequences each assoicated with a set of chromatin features. DeepHaem require training, test and validation data stored as tensors in numpy arrays. Each set consists of the one-hot encoded sequences a 3D tensor of dimensitons (num_examples, seq_length, 4) and the labels a 2D tensor of 1's and 0's representing the chromatin features a given sequence is associated with dimensions (num_examples, num_of_chrom_features). We recommend storing data in hdf5 format. The training script provided reads the data from a hdf5 file and expects training and test set to be stored in the same file, while the validation data is provided in a separate file. Sequences and labels are expected as "training_seqs", "training_labels", "test_seqs", "test_labels", "validation_seqs" and "validation_labels"; entries in the hdf5 file. The training script is straight forward to adjust for reading the data in a different format. For saving space sequences and labels can be stored as unsigned integers or boolean values. Parse the respective data type used to the training script for translation.
+To train new models you will need chromatin feature data as peak calls. In addition to celltypes and assays of bespoke interest we highly recommend training models with a large data compendium. A good reference are the compendia used in [DeepSEA](http://deepsea.princeton.edu/help/) or [Basset](https://github.com/davek44/Basset). Users should compile a training dataset from a large compendium and their bespoke data and train a model for the whole set.
 
-The training (and test and validation data) used in the DeepSEA publication are the best starting point. They are similarly formated to the format required for running deepHaem (http://deepsea.princeton.edu/help/). Basset has another publcily available set comprising over 600 open chromatin assays across cell types (https://github.com/davek44/Basset). The input is 600 bp per site and the data pre-processing is peak based rather then windowed bin based (DeepSEA).
+### Workflow
 
-For how to create your own data set, refer to the workflow used in DeepSEA or Basset. We will add pointer to processing your own data in the future. Once you have a bed like file listing chromosome start, chromatin feature classes and the sequence (see example: ./data_preprocessing/example_training_set_format_for_processing.txt) you can use https://github.com/rschwess/RonsUtilityBox/blob/master/machine_learning_related/make_training_data.py to split the data into training, test and validation set and store it as numpy arrays in hdf5 format.
-
-### Models
-**./models** contains links to already trained models.
+Example workflows for formatting data, training a model and making predictions are outline under [./tutorials](./tutorials).
