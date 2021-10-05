@@ -39,7 +39,7 @@ potentially the columns extracted if using different peak formats.
 The primary output is a plain text file training_instances_dataset.txt contains all genomic windows with at least one chromatin feature overlap. The file is tab separated in the format (chr start end chromatin_feature_ids, DNA_sequence). The chromatin features associated are listed as 0-based indexes in a single comma separated column.
 The secondary output file labels_dataset.txt links labels to chromatin features.
 
-[./example_data_processing/](./example_data_processing/) contains examples of how these files should look after running the formatting (only first 5 lies for instances file).  
+[./example_data_processing/](./example_data_processing/) contains examples of how these files should look after running the formatting (only first 5 lines for instances file).  
 [./example_data/example_training_set_format_for_processing.txt](./example_data/example_training_set_format_for_processing.txt) gives an example of how the first lines of that file would look like for a bigger dataset.
 
 #### 3) Split up training dataset and store in hdf5 files
@@ -81,8 +81,83 @@ python ./make_training_data_bool_avail.py --seed 1234 \
 
 # Training a new model
 
-ToDo
+### Requirements
+
+* Python 3.5+ with the folowing packages installed
+  * Tensorflow v1.8.0+ with GPU support
+  * numpy
+  * h5py
+ * Training new models requires an available GPU
+
+* training h5 file from data pre-processing step
+
+### Workflow
+
+Run [../run_training_deephaemwindow.py](../run_training_deephaemwindow.py) pointing to the pre-processed training data and specifying the desired network architecture and training parameters. The new model will be trained in a new specified directory. For inspecting training progress use tensorboard.
+```
+tensorboard -logdir=./my_new_model_dir
+```
+Monitor the training loss and test loss over epochs.  
+
+Training time depends on the specified architecture such as number of ayers, hidden units, sequence input size, number of chromatin classes and training instances provided. For model comparable to the provided ones, expect to train the model overnight 8 - 12 hrs after which inspection of the training and validation error gives useful insights on how the training is progressing. The majority of training progress is usually achieved in the first 24 hrs or training. Final models can be trained for longer. The training script only saves models that have a lower test set error ten previous ones.   
+
+An example bash script to run model training is provided in [./example_model_training](./example_model_training).
+
+
+### Evalutating a trained model
+
+To evaluate a trained model on the validation data (or again on the test or training data) use [../run]](./example_model_training).
+
+```
+python /path/to/deepHaem/run_test_accuracy.py --test_on 'valid' \
+  --test_file /scratch/ron/deepHaem_bool_chr_split_holdout_validation_data.h5 \
+  --model ./best_checkpoint-276670 \
+  --graph ./best_checkpoint-276670.meta \
+  --test_dir valid_data_out \
+  --name_tag eval_ery_only \
+  --savetxt 'True' \
+  --roc 'True' \
+  --prc 'True' \
+  --num_classes 4384 \
+  --slize 0,1,3,4,5,6,7,8,9,10
+```
+
+Arguments:
+
+| Argument |  Default | Description |
+| ------------------ |:----------:| :-----------------|
+| --dlmodel  | deepHaemWindow | Specifcy the DL model file to use e.g. <deepHaemWindow>.py |
+| --test_file | None | Input Training and Test Sequences and Labels in hdf5 format "test_seqs", "test_labels" labeled data. Or the validation file labels validation_seqs etc.|
+| --test_on' | test | Either "test" or "valid": select if to test accuracy on the test or validation set |
+| --model | None | Full path to checkpoint of model to be tested |
+| --graph | None | Full path to .meta graph file of the model to be tested |
+| --batch_size | 100 | Batch size to process instances |
+| --test_dir | test_data_out | Name or full path to directory to store the test data output |
+| --name_tag | eval | 'Nametag to add to filenames |
+| --slize| all | 'Comma separated list of start and end position 0.based indexed of chromatin feature classifiers (outputs) to evaluate. e.g. '0,1,2,3,5,6' Use labels file from data preprocessing to select ids. Default 'all' will evaluate on all classifiers.')
+| --only | 0 | Set number of first lines to use for testing (if 0 will do all). |
+| --savetxt | False | Select if to store scores and labels as txt files for use downstream. |
+| --roc | False | Calculate and plot ROCurves per classifier True/False |
+| --prc | False | Calculate and plot PrecisionRecallCurves per classifier True/False |
+| --bp_context | 1000 | Specify number of basepairs of DNA sequence input. |
+| --num_classes | 919 | Specify the number of chromatin features (output neurons). |
+| --run_on | gpu | Select where to run on 'cpu' or 'gpu' (if available). |
+| --gpu | 0 | Select device id of a single available GPU and mask the rest. |
+| --roc_auc | False | Define if to print ROC AUC values False/True. |
+| --prc_auc | False | Define if to print PRC AUC values False/True. |
 
 # Making predictions
 
 ToDo
+
+# Additional Scripts
+
+### Saliency
+
+[../run_saliency.py](../run_saliency.py)
+
+
+### Save convolutional weigths
+
+Use [../run_save_weights.py](../run_save_weights.py) as example script to save
+convolutional filter weights as numpy arrays for plotting or transfer learning.
