@@ -37,7 +37,7 @@ pybedtools.helpers.set_tempdir('.')
 # Basic model parameters as external flags -------------------------------------
 flags = tf.app.flags
 FLAGS = flags.FLAGS
-flags.DEFINE_string('dlmodel', 'deepC', 'Specifcy the DL model file to use e.g. <endpoolDeepHaemElement>.py')
+flags.DEFINE_string('dlmodel', 'deepHaemWindow', 'Specifcy the DL model file to use e.g. <endpoolDeepHaemElement>.py')
 # RUN SETTINGS
 flags.DEFINE_integer('batch_size', 10, 'Batch size.')
 flags.DEFINE_string('out_dir', 'predictions_dir', 'Directory to store the predicted results')
@@ -46,7 +46,7 @@ flags.DEFINE_string('name_tag', 'pred', 'Nametag to add to filenames')
 flags.DEFINE_string('do', 'class', 'Select what to do default: predict the \'class\' of a sequence or \'damage\' per class or get class scores per \'seq\'')
 flags.DEFINE_string('slize', 'all', 'Comma separated list of start and end position of columns to slice out (0) indexed. Will use all if unspecified.')
 # EXTERNAL files
-flags.DEFINE_string('input', '', 'Must be a BED like file for \"--do class\" and a vcf like file for \"--do damage\"')
+flags.DEFINE_string('input', '', 'Must be a BED like file for \"--do class\" and a vcf-like file for \"--do damage\"')
 flags.DEFINE_string('model', './model', 'Checkpoint of model file to be tested. (Full path to model without suffix!)')
 # flags.DEFINE_string('graph', './model.meta', 'Defined graph of model. (Full path to model File)')
 # flags.DEFINE_string('labels', '', 'File conmtaining Class labels according to the model (one per line)')

@@ -104,7 +104,7 @@ Training time depends on the specified architecture such as number of ayers, hid
 An example bash script to run model training is provided in [./example_model_training](./example_model_training).
 
 
-### Evalutating a trained model
+### Evaluating a trained model
 
 To evaluate a trained model on the validation data (or again on the test or training data) use [../run]](./example_model_training).
 
@@ -148,13 +148,94 @@ Arguments:
 
 # Making predictions
 
-ToDo
+Three scripts are provided to serve different prediction needs.
+All require bedtools to be available and the python modules pysam and pybedtools.
+The scripts also need access to a reference genome matching the genomic
+coordinates provided in the input files. An .fai index of the same name needs to
+present in the reference genome directory.
+
+Example commands and example input files are provided in
+[./example_predictions](./example_predictions). Check out the note on variant
+formatting in there as well
+
+* [../run_deploy_net.py](../run_deploy_net.py) Deploy a trained model to predict
+ the class a sequence (bed coordinates and reference genome link)
+ belongs to or predict the impact of a sequence variants provided in vcf-like
+ format with minimum columns: (chr pos id ref_base var_base).
+ Can also be used to predict chromatin feature classes over regions
+ provided in bed like format minimum columns: (chr start end). **Note** that bed
+ input assumes 0.based, half open bed format genomic coordinates and vcf format
+ assumes 1.based.
+
+* [../run_deploy_shape_combination.py](../run_deploy_shape_combination.py)
+Predict impact of variants on the chromatin feature classes. This version will
+apply all provided variants to the same sequence for example a combination of
+multiple SNPs and Indels. Requires a bed-like file input with the following
+columns: (chr start end sequence) where the 4th column 'sequence' specifies
+which variants to apply to the genomic window specified by chr start end
+(in 0.based bed index). You can supply **DNA sequence bases** in upper
+case, **.** to indicate deletions or **reference** to indicate that the reference
+DNA sequence from the supplied reference genome should be used. This can be
+useful for delineating the DNA sequence to predict over.
+
+* [../run_deploy_seq_only.py](../run_deploy_seq_only.py) is a slightly optimized
+version to predict the chromatinfeatures over reference DNA sequence only given
+bed regions as input. Supply a bed like file with minimum columns: (chr start end).
+Alternative input can be a fasta file to produce class scores per supplied DNA sequence.
+
 
 # Additional Scripts
 
 ### Saliency
 
-[../run_saliency.py](../run_saliency.py)
+To calculate saliency scores use [../run_saliency.py](../run_saliency.py).
+
+In addition to a trained model this script requires the python module pysam
+available to load and a human reference genome. Supply genomic regions in bed
+format and select a single chromatin feature classifier (0.based.index from
+labels file) to calculate the saliency over the specfid regions.
+The script needs to rebuild the network architecture so supply the architecture
+parameters used to train the respective model.
+
+```
+python  /stopgap/fgenomics/rschwess/scripts/epigenome_nets/deepHaem/run_saliency.py --run_on cpu \
+        --gpu 0 \
+        --gradient_input 'sigmoid' \
+        --select 7 \
+        --batch_size 3 \
+        --out_dir saliency_out_examplet \
+        --name_tag saliency_example \
+        --input /path/to/my_example_regions.bed \
+        --model /path/to/my_deephaem_model/model \
+        --genome /path/to/hg19.fa \
+        --rounddecimals 5 \
+        --conv_layers 5 \
+        --hidden_units_scheme '1000,1000,1000,1000,1000' \
+        --kernel_width_scheme '20,10,8,4,8' \
+        --max_pool_scheme '3,4,5,10,4' \
+        --upstream_connected True \
+        --upstream_connections 100 \
+        --bp_context 1000 \
+        --num_classes 4384 \
+```
+
+Extra arguments:
+
+| Argument |  Default | Description |
+| ------------------ |:----------:| :-----------------|
+| --select | 0 | Index of chromatin feature classifier (0.based.index if output neurons) to use for the saliency calculation. Only a single classifier per run is supported. |
+ validation file labels validation_seqs etc.|
+| --gradient_input | sigmoid | Select "sigmoid" or "logit" (score before sigmoid transformation) relative to which to calculate the saliency score. |
+| --rounddecimals | 10 | Select the number of decimal places to round saliency scores to. |
+| --model | None | Full path to checkpoint of model to be tested |
+| --batch_size | 3 | Batch size to process the supplied regions split up into instances. |
+| --out_dir | predictions_dir | Name or full path to directory to store the test data output. |
+| --name_tag | pred | 'Nametag to add to filenames |
+| --bp_context | 1000 | Specify number of basepairs of DNA sequence input. |
+| --num_classes | 919 | Specify the number of chromatin features (output neurons). |
+| --run_on | gpu | Select where to run on 'cpu' or 'gpu' (if available). |
+| --gpu | 0 | Select device id of a single available GPU and mask the rest. |
+| --stored_dtype | float32 | Indicate what data format sequence and labels where stored in. ["bool", "int8", "int32", ...] |
 
 
 ### Save convolutional weigths

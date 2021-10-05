@@ -47,7 +47,7 @@ flags.DEFINE_string('name_tag', 'pred', 'Nametag to add to filenames')
 # WHAT TO DO
 flags.DEFINE_integer('select', 0, 'Select a single classifier relative to which the saliency should be calculated. (default: 0)')
 flags.DEFINE_string('gradient_input', 'sigmoid', 'Select \"sigmoid\" or \"logit\" (score before sigmoid transformation) relative to which to calculate the saliency score. default: sigmoid')
-flags.DEFINE_integer('rounddecimals', 10, 'Select the number of decimal places to round prob scores and damages to. [Default 10]')
+flags.DEFINE_integer('rounddecimals', 10, 'Select the number of decimal places to round saliency to. [Default 10]')
 # flags.DEFINE_string('saliency_report_bases', 'present', 'Only report the saliency value for the \"present\" base (multiple saliencies with one-hot-encoded sequence). or for \"all\" bases.')
 # network needs to be reconstructed so specifcy conv scheme and such
 flags.DEFINE_integer('conv_layers', 5, 'Number of convolutional layers.')
