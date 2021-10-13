@@ -54,10 +54,12 @@ report_every=50
 
 
 # Run  the training script ---------------------------
-
 date
 
 train_dir="./my_deephaem_model"
+
+# NOTE! Boolean arguments True/False need to be passed within doubledquotes and
+# with an equal sign to be parsed correctly
 
 python ${SCRIPT_PATH}/run_training_deephaemwindow.py --train_file ${DATA_PATH} \
 	--max_epoch ${max_epoch} \
@@ -65,12 +67,12 @@ python ${SCRIPT_PATH}/run_training_deephaemwindow.py --train_file ${DATA_PATH} \
 	--keep_prob_inner ${keep_prob_inner} \
 	--keep_prob_outer ${keep_prob_outer} \
 	--l2_strength ${l2_strength} \
-	--shuffle ${shuffle} \
+	--shuffle="${shuffle}" \
 	--conv_layers ${conv_layers} \
 	--hidden_units_scheme ${hidden_units_scheme} \
 	--kernel_width_scheme ${kernel_width_scheme} \
 	--max_pool_scheme ${max_pool_scheme} \
-	--upstream_connected ${upstream_connected} \
+	--upstream_connected="${upstream_connected}" \
 	--upstream_connections ${upstream_connections} \
 	--learning_rate ${learning_rate} \
 	--epsilon ${epsilon} \
