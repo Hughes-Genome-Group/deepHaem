@@ -39,7 +39,19 @@ with open(args.inputfile, "r") as fr:
                 chrom, start, end, labels = line.split()
                 start = int(start)
                 end = int(end)
+
+                # split and format labels
+                labels = labels.split(',')
+                conc_labels = ""
+                m = 0
+                for l in labels:
+                    if l == '1':
+                        conc_labels = conc_labels + ',' + str(m)
+                    m = m + 1
+                # remove first comma
+                conc_labels = conc_labels.strip(',')
+
                 # get DNA sequence
                 seq = fa.fetch(reference=chrom, start=start, end=end).upper()
                 # print all
-                fw.write('%s\t%s\t%s\t%s\t%s\t\n' % (chrom, start, end, labels, seq))
+                fw.write('%s\t%s\t%s\t%s\t%s\t\n' % (chrom, start, end, conc_labels, seq))
