@@ -97,8 +97,8 @@ for i in range(num_ids):
 print("Test Print first bin_look_up lines:")
 print(bin_look_up[0][0:4])
 print(bin_look_up[1][0:4])
-print(bin_look_up[2][0:4])
-print(bin_look_up[3][0:4])
+#print(bin_look_up[2][0:4])
+#print(bin_look_up[3][0:4])
 
 # Read in data -----------------------------------------------------------------
 # init single empty binary label array for access later

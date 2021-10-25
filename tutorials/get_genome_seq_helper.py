@@ -45,7 +45,8 @@ with open(args.inputfile, "r") as fr:
                 conc_labels = ""
                 m = 0
                 for l in labels:
-                    if l == '1':
+                    l = int(l)
+                    if l >= 1:
                         conc_labels = conc_labels + ',' + str(m)
                     m = m + 1
                 # remove first comma
